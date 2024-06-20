@@ -1,54 +1,49 @@
 #!/usr/bin/python3
-
 import sys
+import signal
 
+total_size = 0
+status_codes = {200: 0, 301: 0, 400: 0, 401: 0, 403: 0, 404: 0, 405: 0, 500: 0}
+line_count = 0
 
-def print_msg(dict_sc, total_file_size):
-    """
-    Method to print
-    Args:
-        dict_sc: dict of status codes
-        total_file_size: total of the file
-    Returns:
-        Nothing
-    """
+def print_stats():
+    print(f"File size: {total_size}")
+    for code in sorted(status_codes.keys()):
+        if status_codes[code] > 0:
+            print(f"{code}: {status_codes[code]}")
 
-    print("File size: {}".format(total_file_size))
-    for key, val in sorted(dict_sc.items()):
-        if val != 0:
-            print("{}: {}".format(key, val))
+def signal_handler(sig, frame):
+    print_stats()
+    sys.exit(0)
 
-
-total_file_size = 0
-code = 0
-counter = 0
-dict_sc = {"200": 0,
-           "301": 0,
-           "400": 0,
-           "401": 0,
-           "403": 0,
-           "404": 0,
-           "405": 0,
-           "500": 0}
+signal.signal(signal.SIGINT, signal_handler)
 
 try:
     for line in sys.stdin:
-        parsed_line = line.split()  # ✄ trimming
-        parsed_line = parsed_line[::-1]  # inverting
+        parts = line.split()
+        if len(parts) != 10:
+            continue
+        
+        ip, _, _, date, _, request, _, status, size, _ = parts
+        
+        if not request.startswith('"GET /projects/260 HTTP/1.1"'):
+            continue
+        
+        try:
+            status = int(status)
+            size = int(size)
+        except ValueError:
+            continue
 
-        if len(parsed_line) > 2:
-            counter += 1
+        total_size += size
 
-            if counter <= 10:
-                total_file_size += int(parsed_line[0])  # file size
-                code = parsed_line[1]  # status code
+        if status in status_codes:
+            status_codes[status] += 1
 
-                if (code in dict_sc.keys()):
-                    dict_sc[code] += 1
+        line_count += 1
 
-            if (counter == 10):
-                print_msg(dict_sc, total_file_size)
-                counter = 0
-
-finally:
-    print_msg(dict_sc, total_file_size)
+        if line_count % 10 == 0:
+            print_stats()
+except KeyboardInterrupt:
+    print_stats()
+    sys.exit(0)
