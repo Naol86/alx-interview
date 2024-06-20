@@ -1,47 +1,37 @@
 #!/usr/bin/python3
-"""
-Reads stdin line by line and computes metrics.
-"""
+'''a script that reads stdin line by line and computes metrics'''
 
 
-if __name__ == '__main__':
+import sys
 
-    import sys
+cache = {'200': 0, '301': 0, '400': 0, '401': 0,
+         '403': 0, '404': 0, '405': 0, '500': 0}
+total_size = 0
+counter = 0
 
-    def print_stats(status_codes, file_size):
-        """ Print the statistics """
-        print("File size: {:d}".format(file_size))
-        for code, val in sorted(status_codes.items()):
-            if val:
-                print("{:s}: {:d}".format(code, val))
+try:
+    for line in sys.stdin:
+        line_list = line.split(" ")
+        if len(line_list) > 4:
+            code = line_list[-2]
+            size = int(line_list[-1])
+            if code in cache.keys():
+                cache[code] += 1
+            total_size += size
+            counter += 1
 
-    status_codes = {"200": 0,
-                    "301": 0,
-                    "400": 0,
-                    "401": 0,
-                    "403": 0,
-                    "404": 0,
-                    "405": 0,
-                    "500": 0
-                    }
-    file_size = 0
-    count_lines = 0
+        if counter == 10:
+            counter = 0
+            print('File size: {}'.format(total_size))
+            for key, value in sorted(cache.items()):
+                if value != 0:
+                    print('{}: {}'.format(key, value))
 
-    try:
-        for line in sys.stdin:
-            if count_lines != 0 and count_lines % 10 == 0:
-                print_stats(status_codes, file_size)
-            count_lines += 1
-            parsed_line = line.split()
-            try:
-                status_code = parsed_line[-2]
-                if status_code in status_codes:
-                    status_codes[status_code] += 1
-                    file_size += int(parsed_line[-1])
-            except Exception:
-                pass
-        print_stats(status_codes, file_size)
-    except KeyboardInterrupt:
-        """ Keyboard interruption, print from the beginning """
-        print_stats(status_codes, file_size)
-        raise
+except Exception as err:
+    pass
+
+finally:
+    print('File size: {}'.format(total_size))
+    for key, value in sorted(cache.items()):
+        if value != 0:
+            print('{}: {}'.format(key, value))
